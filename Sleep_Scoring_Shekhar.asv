@@ -1,0 +1,135 @@
+%%%%% Run till merged folders vector
+%%%%% loop for Stored WFM
+%%%%% use strcmp SDX with elements in meregd folder
+%%%%%% change directory accordingly
+%%%%%% load trial duration file
+%%%%%%% run spike removal script with corrected timestamps
+clc;clear
+
+
+%% Accessing different study days// SPECIFY RAT DIRECTORY
+function A=Sleep_Scoring_shekhar(directory,Best_WFM)
+
+%root_rat= '/media/irene/GL04_RAT_HOMER_2/Spike_sorting/Rat_OS_Ephys_RGS14_Rat2_57987';
+study_day_dir= dir(string(directory)); %Reaching the directory after user input
+% remove all files (isdir property is 0)
+study_day_dir= study_day_dir([study_day_dir(:).isdir]); 
+% remove '.' and '..' 
+study_day_folders = study_day_dir(~ismember({study_day_dir(:).name},{'.','..'}));                        
+study_day_folders=struct2cell(study_day_folders(:,1));
+study_days=natsortfiles(study_day_folders(1,:));
+
+
+
+%% Initializing Main Variabes// SPECIFY RAT DATA (CHECK LINE 13)
+A=load(string(Best_WFM)).Stored_WFMs;
+A=rmfield( A , 'Avg_Firing_Rate' );
+
+%% Reaching merged and cortex folders
+root_merged=[];
+for study_days_index=1:length(study_days) 
+      
+    root_prelim=strcat(root_rat,{'/'},string(study_days(study_days_index)));
+    root_prelim=convertStringsToChars(root_prelim);
+    root_merged_dir=dir(root_prelim);
+    root_merged_dir=root_merged_dir([root_merged_dir(:).isdir]);
+    root_merged_folders=root_merged_dir(~ismember({root_merged_dir(:).name},{'.','..'}));
+    
+    root_folder_names=extractfield(root_merged_folders,'name');
+    for i=1:length(root_folder_names)
+  
+      X=string(root_folder_names(i));
+      X=convertStringsToChars(X);
+      if ismember('Post',X)
+          Post_Trial=X;
+      else
+          Merged_Folder=X;
+      end
+    end 
+    
+    root_merged=[root_merged,strcat(root_prelim,{'/'},string(Merged_Folder))];
+end  
+  
+
+
+
+Study_Day_Names=[];
+for i=1:length(study_days)
+K=strfind(study_days(i),'_SD');
+SD=convertStringsToChars(string(study_days(i)));
+Study_Day_Names=[Study_Day_Names string(strcat('SD',SD(K{1}+3)))];
+end
+
+
+for study_day_names_index=1:length(Study_Day_Names) 
+
+for curspiketime_index=1:size(A,1)
+    if contains(A(curspiketime_index).WFM_Titles,Study_Day_Names(study_day_names_index))
+        
+        cd(root_merged(study_day_names_index))
+        S=load('trials_durations_samples.mat');
+        x=curspiketime_index;
+        units=A(x).curSpikeTimes;
+        a=units;
+
+%READ SPREADSHEET WITH ACTUAL TIMESTAMPS
+
+ 
+
+%cumsamp is the cumulative amount of samples throughout the recording.
+cumsamp=cumsum(S.trial_durations);
+%fixed_amount: Vector with the amount of samples that each trial/posttrial should have
+fixed_amount=[81000000	9000000	81000000	9000000	81000000	9000000	81000000	9000000	81000000	9000000	324000000];
+
+%%
+new=[];
+new(1)=fixed_amount(1);
+trial_ranges(1,:)=[0 new(1)]; % Range for presleep
+
+%Remove spikes above the first 45min of presleep
+a=a(a(:) >= cumsamp(1)  | a(:) < new(1));
+
+fprintf('Removed spikes between sample %i and sample %i.\n',new(1),cumsamp(1));
+%% Remove spikes above 5 or 45 min trials/posttrials
+for i=2:length(fixed_amount)
+    %Find sample giving exactly 5/45 min. Must start counting at the actual end of
+    %the previous trial/postrial
+    new=[new cumsamp(i-1)+fixed_amount(i)];
+    
+    %Range of current trial/postrial
+    trial_ranges(i,:)=[cumsamp(i-1) new(i)] ;
+    
+    %Remove extra spikes by only saving spikes that are below lower bound OR above
+    %upper bound of the extra period.
+    a=a(a(:) >= cumsamp(i) | a(:) < new(i));
+    %a=a(a(:)<=new(1));
+fprintf('Removed spikes between sample %i and sample %i.\n',new(i),cumsamp(i));
+
+end
+%% Correct delay by shifting trial timestamps 
+%according to the number of extra samples from the trial(s) before
+Shift=[];
+for i=2:length(fixed_amount) %Iterate across trials
+    a_ind=(cumsamp(i-1)<a & a<new(i)); %Binary vector with samples within trial/posttrial period.
+    shift=cumsamp(i-1)-new(i-1); %Duration of preceding 'Extra spikes' period (in samples).
+    Shift=[Shift shift]; %Accumulate shifts.
+    a(a_ind)=a(a_ind)-sum(Shift); %Substract the cumulative shift value to remove empty 'Extra spikes' period.
+end
+   
+   %A(x).curSpikeTimes_Corrected=a;   
+   A(x).curSpikeTimes=a;
+   A(x).Avg_Firing_Rate=size(a,1)/(sum(S.trial_durations)/30000); 
+   %A=rmfield( A , 'Avg_Firing_Rate' );
+   %A(x).Removed_Spikes=size(A(x).curSpikeTimes,1)-size(A(x).curSpikeTimes_Corrected,1);
+        
+    end    
+    
+end  
+
+
+
+
+
+end
+
+end
