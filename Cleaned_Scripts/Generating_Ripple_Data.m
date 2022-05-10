@@ -124,7 +124,7 @@ veh_smooth_2_c4=veh_smooth_2_c4';
 Data_RGS=array2table(rgs_smooth_2_c4);
 Data_Veh=array2table(veh_smooth_2_c4);
 
-%% Generating vars to plot 
+%% Generating vars used in GraphPad 
 % name='Ripple_NormZ_Plots_Combined_Groups_RGS_vs_Veh_c4_Neuron_Wise.xls';
 % 
 % writecell(rgs_titles',name,'Sheet','RGS_Titles')
