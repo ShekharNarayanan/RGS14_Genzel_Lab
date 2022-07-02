@@ -9,10 +9,12 @@
 % The spike count is collected for 10 degree bins (36 total). This count is
 % divided by the duration of nrem for the corresponding neuron to get normalized phase
 % locked activity.
-
+%
 %*Note: For the Spikes to SO phase figure, the variables
 %Counts_RGS_Nrem_Norm and Counts_Veh_Nrem_Norm were first split into groups
 %and then later visualized in graphpad.
+%
+% Functions used: find_dict_rat.m
 
 
 %% Loading Input Data
