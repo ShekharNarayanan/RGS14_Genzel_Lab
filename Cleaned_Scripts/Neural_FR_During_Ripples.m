@@ -1,6 +1,7 @@
 % This script generates ripple data for ripple response type and visualizes firing activity centered around ripples.
 % Note:  Variables Counts_Norm_RGS_Temp and Counts_Norm_Veh_Temp were used
 % to create response type plots on GraphPad.
+% Functions used: Ripple_Analysis_All.m, Ripple_Colorplot.m
 
 
 %% Loading Input Data
