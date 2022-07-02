@@ -1,5 +1,7 @@
-%% Loading Data
+% This script visualizes the different neuron groups based on their firing
+% rates. This is done for both treatments.
 
+%% Loading Data
 load('RGS_Session_1.mat')
 % load('RGS_Pyr_S1_No_Rn3.mat')
 load('Vehicle_Session_1.mat') 
@@ -8,19 +10,48 @@ load('Vehicle_Session_1.mat')
 Pyr_RGS=RGS14_Session_1.Pyramidal_Cells;
 Pyr_Veh=Vehicle_Session_1.Pyramidal_Cells;
 
-Temp_Pyr_RGS=[];
-% Removing Outliers
-for i=1:size(Pyr_RGS,1)
-    if (i==41) || (i==61) || (i==71) %|| (i==55) %possible outiers: 41, 55, 61, 71
-        
-        continue
-    else
-        Temp_Pyr_RGS=[Temp_Pyr_RGS; Pyr_RGS(i)];
-        
-    end    
-end 
 
-Pyr_RGS=Temp_Pyr_RGS;
+%% Correcting for Outliers Lisa found
+
+% Loading excel sheets and collecting Neuron IDs and Wake firing rates
+% used for new threshold for groups
+Corrected_Var_RGS= table2struct(readtable('Stage_Wise_Unit_Wise_FR_Data_Both_Treatments_wexclusion.xlsx','Sheet',1));
+RGS_Useful_Data= [{{Corrected_Var_RGS(:).NeuronIDs}'} ,{[Corrected_Var_RGS.Wake]'}];
+Corrected_Var_Veh= table2struct(readtable('Stage_Wise_Unit_Wise_FR_Data_Both_Treatments_wexclusion.xlsx','Sheet',2));
+Veh_Useful_Data= [{{Corrected_Var_Veh(:).NeuronIDs}'} ,{[Corrected_Var_Veh.Wake]'}];
+
+%% Name collection for corrected Data
+% RGS
+Temp_Pyr_RGS=[]; Temp_Pyr_Veh =[];
+for i1=1:length(RGS_Useful_Data{1})
+    Names=RGS_Useful_Data{1};
+    Name=Names{i1};
+    for i2=1:length(Pyr_RGS)
+        if strcmp(Pyr_RGS(i2).WFM_Titles,Name)
+            Temp_Pyr_RGS=[Temp_Pyr_RGS; Pyr_RGS(i2)];
+        end
+    end
+       
+end
+
+%Veh
+for i1=1:length(Veh_Useful_Data{1})
+    Names=Veh_Useful_Data{1};
+    Name=Names{i1};
+    for i2=1:length(Pyr_Veh)
+        if strcmp(Pyr_Veh(i2).WFM_Titles,Name)
+            Temp_Pyr_Veh=[Temp_Pyr_Veh; Pyr_Veh(i2)];
+        end
+    end
+       
+end
+
+%% Replacing Data with Temp Data
+% doing this ^ helps us run the remaining part (relevant) of the script
+% without changing local variables
+
+Pyr_RGS= Temp_Pyr_RGS;
+Pyr_Veh= Temp_Pyr_Veh;
 
 
 
