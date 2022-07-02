@@ -1,4 +1,4 @@
-% This script visualizes the firing activity in different sleep stages per
+% This script visualizes the firing activity of neurons in different sleep stages per
 % treatment.
 
 
