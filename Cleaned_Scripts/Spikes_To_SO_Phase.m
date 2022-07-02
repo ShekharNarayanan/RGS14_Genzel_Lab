@@ -1,6 +1,23 @@
+% The main goal of this script is to study the phase locking behaviour of
+% neurons in both treatments.
+% 
+% It uses input data containining NREM sleep spikes and
+% corresponding phases for each neuron in the entire study day. 
+% 
+% Using the neuron IDs, the script loads the sleep scoring file for each
+% neuron (and Study Day) and collects the total duration of NREM sleep in minutes.
+% The spike count is collected for 10 degree bins (36 total). This count is
+% divided by the duration of nrem for the corresponding neuron to get normalized phase
+% locked activity.
+
+%*Note: For the Spikes to SO phase figure, the variables
+%Counts_RGS_Nrem_Norm and Counts_Veh_Nrem_Norm were first split into groups
+%and then later visualized in graphpad.
+
+
 %% Loading Input Data
-RGS_Phase=load('Phase_Vector_Slow_Wave_Pyr_RGS_Session_1.mat').Phase_Vector_Slow_Wave_Pyr_RGS_Session_1 ;
-Veh_Phase=load('Phase_Vector_Slow_Wave_Pyr_Veh_Session_1.mat').Phase_Vector_Slow_Wave_Pyr_Veh_Session_1 ;
+RGS_Phase=load('Phase_Vector_Slow_Wave_Pyr_RGS_Session_1.mat').Phase_Vector_Slow_Wave_Pyr_RGS_Session_1;
+Veh_Phase=load('Phase_Vector_Slow_Wave_Pyr_Veh_Session_1.mat').Phase_Vector_Slow_Wave_Pyr_Veh_Session_1;
 
 %% Correcting for Outliers Lisa found
 
@@ -20,11 +37,10 @@ for i1=1:length(RGS_Useful_Data{1})
     for i2=1:length(RGS_Phase)
         if strcmp(RGS_Phase(i2).WFM_Titles,Name)
             RGS_Phase_Temp=[RGS_Phase_Temp; RGS_Phase(i2)];
-        end    
+        end
     end
-    
-    
-end    
+       
+end
 
 %Veh
 for i1=1:length(Veh_Useful_Data{1})
@@ -33,11 +49,11 @@ for i1=1:length(Veh_Useful_Data{1})
     for i2=1:length(Veh_Phase)
         if strcmp(Veh_Phase(i2).WFM_Titles,Name)
             Veh_Phase_Temp=[Veh_Phase_Temp; Veh_Phase(i2)];
-        end    
+        end
     end
     
     
-end 
+end
 
 %% Replacing Data with Temp Data
 % doing this ^ helps us run the remaining part (relevant) of the script
@@ -45,139 +61,64 @@ end
 RGS_Phase = RGS_Phase_Temp';
 Veh_Phase = Veh_Phase_Temp';
 
-%% Combing Data
-Combined_RGS=vertcat(RGS_Phase.NREM_SW_Phases);
-Combined_Veh=vertcat(Veh_Phase.NREM_SW_Phases);
 
-%% Plotting Combined Data (Averaged but not normalized)
-% % Collecting Average Counts
-Counts_Avg_RGS_Temp=[]; 
+% % Collecting Normalized NREM Counts
+Counts_RGS_Nrem_Norm=[];
 for i=1:size(RGS_Phase,2)
-
-hist_RGS=histogram(RGS_Phase(i).NREM_SW_Phases,'FaceColor','k','BinWidth',1);
-
-Counts_RGS_Avg=hist_RGS.BinCounts;
-
-diff_count=360-size(Counts_RGS_Avg,2);% fixing number of bins to 360- meaningful for phase analysis
-Counts_RGS_Avg=[Counts_RGS_Avg nan(1,diff_count)];
-Counts_Avg_RGS_Temp=[Counts_Avg_RGS_Temp  Counts_RGS_Avg'];   %collecting bincounts for each neuron                        
+    
+    % gathering info about Neuron ID
+    Unit_ID = convertStringsToChars(RGS_Phase(i).WFM_Titles);
+    Unit_ID_split = regexp(Unit_ID,'_','split');
+    Rat_num = Unit_ID_split{5}; Rat_num = Rat_num(3);
+    Rat_Number_Input = strcat('Rat',Rat_num);
+    SD_num  = Unit_ID_split{7};
+    
+    % using neuron ID to retrieve relevant sleep scoring directory
+    [final_directory,final_SD_Folder_name]=find_dict_rat(Rat_Number_Input,SD_num,'sleep_scoring');
+    cd(final_directory)
+    
+    files_dir= dir(string(final_directory)); %Browsing the directory
+    
+    [size_check, index] = max([files_dir.bytes]); %loading concatenated sleep scoring file-- the concatenated file has the largest size
+    load(files_dir(index).name)
+    
+    nrem_len_mins = length(find(states_corrected_final==3))/60; % duration of NREM sleep (minutes) in the corresponding study day
+    
+    figure('name','inloopfig','Visible', 'off')
+    hist_RGS=histogram(RGS_Phase(i).NREM_SW_Phases,36,'FaceColor','k');
+    
+    Counts_RGS_NREM_Norm_temp = hist_RGS.BinCounts/nrem_len_mins; % spikes in NREM normalized with duration of NREM
+    
+    Counts_RGS_Nrem_Norm =  [Counts_RGS_Nrem_Norm Counts_RGS_NREM_Norm_temp']; % collecting nrem normalized counts for each neuron
 end
 
-Counts_Avg_RGS_Final=[]; % averaging across neurons in this loop
-for ii=1:size(Counts_Avg_RGS_Temp',2)
-    
-    Counts_Avg_RGS_Final=[Counts_Avg_RGS_Final; nanmean(Counts_Avg_RGS_Temp(ii,:))];
-
-    
-end
 
 % Vehicle
-Counts_Avg_Veh_Temp=[];
+Counts_Avg_Veh_Temp=[];Counts_Veh_Nrem_Norm =[];
 for i=1:size(Veh_Phase,2)
+    
+    Unit_ID = convertStringsToChars(Veh_Phase(i).WFM_Titles);
+    Unit_ID_split = regexp(Unit_ID,'_','split');
+    Rat_num = Unit_ID_split{5}; Rat_num = Rat_num(3);
+    Rat_Number_Input = strcat('Rat',Rat_num);
+    SD_num  = Unit_ID_split{7};
+    
+    [final_directory,final_SD_Folder_name]=find_dict_rat(Rat_Number_Input,SD_num,'sleep_scoring');
+    cd(final_directory)
+    
+    files_dir= dir(string(final_directory)); %Reaching the directory
+  
+    [size_check, index] = max([files_dir.bytes]); %loading concatenated sleep scoring file
+    load(files_dir(index).name)
+    
+    nrem_len_mins = length(find(states_corrected_final==3))/60;
+    
+    figure('name','inloopfig','Visible', 'off')
+    hist_Veh=histogram(Veh_Phase(i).NREM_SW_Phases,36,'FaceColor','k');
+    
+    Counts_Veh_NREM_Norm_temp = hist_Veh.BinCounts/nrem_len_mins;
 
-hist_Veh=histogram(Veh_Phase(i).NREM_SW_Phases,'FaceColor','k','BinWidth',1);
-
-Counts_Veh=hist_Veh.BinCounts;
-
-diff_count=360-size(Counts_Veh,2);
-Counts_Veh=[Counts_Veh nan(1,diff_count)];
-Counts_Avg_Veh_Temp=[Counts_Avg_Veh_Temp  Counts_Veh'];                           
+    Counts_Veh_Nrem_Norm =  [Counts_Veh_Nrem_Norm Counts_Veh_NREM_Norm_temp']; % data per neuron
 end
 
-Counts_Avg_Veh_Final=[];
-for ii=1:size(Counts_Avg_Veh_Temp',2)
-    
-    Counts_Avg_Veh_Final=[Counts_Avg_Veh_Final; nanmean(Counts_Avg_Veh_Temp(ii,:))];
 
-    
-end
-
-
-
-figure('Name','RGS Combined')
-subplot(1,2,1)
-Avg_hist_RGS=histogram(Combined_RGS,360,'BinWidth',1);Avg_hist_RGS.BinCounts=Counts_Avg_RGS_Final';
-xlabel('Phase : 0-360');ylabel('Average Spikes during NREM')
-title(sprintf('NREM Histogram \n Units:%d',size(RGS_Phase,2)))
-ylim([0 120])
-subplot(1,2,2)
-hist_polar_RGS_combined=polarhistogram(deg2rad(Combined_RGS), 18, 'FaceColor','g');
-title(sprintf("All RGS14 Pyr Units Combined \n Units:%d",size(RGS_Phase,2)))
-
-figure('Name','Veh Combined')
-subplot(1,2,1)
-Avg_hist_Veh=histogram(Combined_Veh,360,'BinWidth',1);Avg_hist_Veh.BinCounts=Counts_Avg_Veh_Final';
-xlabel('Phase : 0-360');ylabel('Average Spikes during NREM')
-title(sprintf('NREM Histogram \n Units:%d',size(Veh_Phase,2)))
-
-subplot(1,2,2)
-hist_polar_Veh_combined=polarhistogram(deg2rad(Combined_Veh), 18, 'FaceColor','b');
-title(sprintf("All Veh Pyr Units Combined \n Units:%d",size(Veh_Phase,2)))
-
-%% Normalized Approach
-
-% Collecting Normalized Counts
-
-% RGS
-Counts_Norm_RGS_Temp=[]; 
-for i=1:size(RGS_Phase,2)
-
-hist_RGS=histogram(RGS_Phase(i).NREM_SW_Phases,'FaceColor','k','BinWidth',1);
-
-Counts_RGS_Norm=hist_RGS.BinCounts;
-
-Counts_RGS_Norm=Counts_RGS_Norm/max(Counts_RGS_Norm); %% Normalization step- dividing each bincount by the max count
-
-diff_count=360-size(Counts_RGS_Norm,2); % fixing total number of bins to 360
-Counts_RGS_Norm=[Counts_RGS_Norm nan(1,diff_count)];
-Counts_Norm_RGS_Temp=[Counts_Norm_RGS_Temp  Counts_RGS_Norm'];                           
-end
-
-Counts_Norm_RGS_Final=[]; 
-for ii=1:size(Counts_Norm_RGS_Temp',2)
-    
-    Counts_Norm_RGS_Final=[Counts_Norm_RGS_Final; nanmean(Counts_Norm_RGS_Temp(ii,:))];
-
-    
-end
-
-% Vehicle
-Counts_Norm_Veh_Temp=[];
-for i=1:size(Veh_Phase,2)
-
-hist_Veh=histogram(Veh_Phase(i).NREM_SW_Phases,'FaceColor','k','BinWidth',1);
-
-Counts_Veh=hist_Veh.BinCounts;
-
-Counts_Veh=Counts_Veh/max(Counts_Veh); %% Normalization step
-
-diff_count=360-size(Counts_Veh,2);
-Counts_Veh=[Counts_Veh nan(1,diff_count)];
-Counts_Norm_Veh_Temp=[Counts_Norm_Veh_Temp  Counts_Veh'];                           
-end
-
-Counts_Norm_Veh_Final=[];
-for ii=1:size(Counts_Norm_Veh_Temp',2)
-    
-    Counts_Norm_Veh_Final=[Counts_Norm_Veh_Final; nanmean(Counts_Norm_Veh_Temp(ii,:))];
-
-    
-end
-
-%% Plotting Norm Data
-figure('Name','Normalized Histograms -RGS')
-% subplot(1,2,2)
-hold on;
-Norm_hist_RGS=histogram(Combined_RGS,360); Norm_hist_RGS.BinCounts=Counts_Norm_RGS_Final';
-title(sprintf('RGS Phase Spike normalized Plot \n RGS Units: %d',size(RGS_Phase,2)))
-ylim([0 1])
-xlabel('Phase: 0-360')
-ylabel('Normalized Spike Counts')
-
-figure('Name','Normalized Histograms -Veh')
-% subplot(1,2,1)
-Norm_hist_Veh=histogram(Combined_Veh,360,'FaceColor','k'); Norm_hist_Veh.BinCounts=Counts_Norm_Veh_Final';
-title(sprintf('Veh Phase Spike normalized Plot \n Units: %d',size(Veh_Phase,2)))
-xlabel('Phase: 0-360')
-ylabel('Normalized Spike Counts')
-ylim([0 1])
